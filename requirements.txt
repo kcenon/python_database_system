@@ -1,0 +1,14 @@
+# Python Database System Dependencies
+
+# PostgreSQL adapter
+psycopg2-binary>=2.9.0
+
+# Future MySQL support (uncomment when needed)
+# pymysql>=1.0.0
+# mysql-connector-python>=8.0.0
+
+# Future MongoDB support (uncomment when needed)
+# pymongo>=4.0.0
+
+# Future Redis support (uncomment when needed)
+# redis>=4.0.0
