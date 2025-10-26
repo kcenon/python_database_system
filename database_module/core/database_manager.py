@@ -8,6 +8,11 @@ import threading
 from typing import Optional, Dict
 from database_module.core.database_base import DatabaseBase, DatabaseResult
 from database_module.core.database_types import DatabaseType
+from database_module.pool.connection_pool import (
+    ConnectionPool,
+    ConnectionPoolConfig,
+    ConnectionStats,
+)
 
 
 class DatabaseManager:
@@ -39,6 +44,8 @@ class DatabaseManager:
         self._database: Optional[DatabaseBase] = None
         self._connected: bool = False
         self._current_type: DatabaseType = DatabaseType.NONE
+        self._connection_pools: Dict[DatabaseType, ConnectionPool] = {}
+        self._pool_lock = threading.Lock()
         self._initialized = True
 
     @classmethod
@@ -129,3 +136,79 @@ class DatabaseManager:
     def is_connected(self) -> bool:
         """Check if database is connected."""
         return self._connected
+
+    def create_connection_pool(
+        self, db_type: DatabaseType, config: ConnectionPoolConfig
+    ) -> bool:
+        """
+        Create a connection pool for the specified database type.
+
+        Args:
+            db_type: The database type to create a pool for
+            config: Connection pool configuration parameters
+
+        Returns:
+            True if the pool was created successfully, False otherwise
+        """
+        with self._pool_lock:
+            if db_type in self._connection_pools:
+                # Pool already exists
+                return False
+
+            # Create connection factory function based on database type
+            def create_connection():
+                from database_module.backends.postgres.postgres_manager import (
+                    PostgresManager,
+                )
+
+                if db_type == DatabaseType.POSTGRES:
+                    manager = PostgresManager()
+                    if manager.connect(config.connection_string):
+                        return manager
+                # Add other database types here
+                return None
+
+            pool = ConnectionPool(config, create_connection)
+            self._connection_pools[db_type] = pool
+            return True
+
+    def get_connection_pool(self, db_type: DatabaseType) -> Optional[ConnectionPool]:
+        """
+        Get the connection pool for the specified database type.
+
+        Args:
+            db_type: The database type to get a pool for
+
+        Returns:
+            ConnectionPool if found, None otherwise
+        """
+        with self._pool_lock:
+            return self._connection_pools.get(db_type)
+
+    def get_pool_stats(self) -> Dict[DatabaseType, ConnectionStats]:
+        """
+        Get connection pool statistics for all active pools.
+
+        Returns:
+            Dict mapping database type to connection statistics
+        """
+        stats = {}
+        with self._pool_lock:
+            for db_type, pool in self._connection_pools.items():
+                stats[db_type] = pool.get_stats()
+        return stats
+
+    def create_query_builder(self, db_type: Optional[DatabaseType] = None):
+        """
+        Create a query builder for the current or specified database type.
+
+        Args:
+            db_type: Optional database type. If None, uses current database type.
+
+        Returns:
+            QueryBuilder configured for the specified database
+        """
+        from database_module.query.query_builder import QueryBuilder
+
+        target_type = db_type if db_type is not None else self._current_type
+        return QueryBuilder()

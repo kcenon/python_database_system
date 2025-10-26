@@ -1,5 +1,9 @@
 """Connection pooling module."""
 
-from database_module.pool.connection_pool import ConnectionPool, ConnectionPoolConfig
+from database_module.pool.connection_pool import (
+    ConnectionPool,
+    ConnectionPoolConfig,
+    ConnectionStats,
+)
 
-__all__ = ["ConnectionPool", "ConnectionPoolConfig"]
+__all__ = ["ConnectionPool", "ConnectionPoolConfig", "ConnectionStats"]
